@@ -44,6 +44,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #define ENABLE_MENU 0
 
+#ifdef SDL2
+SDL_Window* sdlWindow=NULL;
+SDL_Surface* sdlSurface=NULL;
+#endif
+
 SDL_Surface *apple_icon;
 SDL_Surface *screen;  // our main screen
 // rects for screen stretch if needed
@@ -117,7 +122,11 @@ void DrawStatusArea(int drawflags)
 
   SDL_Rect srect;
   Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);  // bluez color, know that?
+#ifdef SDL2
+  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
+#else
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
+#endif
 
   if (drawflags & DRAW_BACKGROUND) {
     g_iStatusCycle = SHOW_CYCLES;  // start cycle for panel showing
@@ -201,13 +210,23 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     tempSurface = g_origscreen;
   }
 
+#ifdef SDL2
+  SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 0, 0, 255)); // add by trngaje
+#endif
+
   if (tempSurface == NULL) {
     tempSurface = screen;
   } // Use screen, if none available
   my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                    0, 0, 0);
   if (tempSurface->format->palette && my_screen->format->palette) {
+#ifdef SDL2
+    SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+	
+	//SDL_SetPaletteColors(screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+#else
     SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+#endif
   }
 
   surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
@@ -234,7 +253,12 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   rectangle(screen, 1, Help_TopX - 4, g_ScreenWidth, int(335 * facy), SDL_MapRGB(screen->format, 255, 255, 255));
   rectangle(screen, 1, 1, g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
+#ifdef SDL2
+  tempSurface = assets->icon; //SDL_ConvertSurfaceFormat(assets->icon, SDL_GetWindowPixelFormat(sdlWindow), 0);
+#else
   tempSurface = SDL_DisplayFormat(assets->icon);
+#endif
+  
   SDL_Rect logo, scrr;
   logo.x = logo.y = 0;
   logo.w = tempSurface->w;
@@ -244,7 +268,14 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   scrr.w = scrr.h = int(100 * facy);
   SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
 
+#ifdef SDL2
+  //SDL_FillRect(screen, 0, SDL_MapRGB(sdlSurface->format, 0, 0, 255));
+  SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+
+  SDL_UpdateWindowSurface(sdlWindow);
+#else
   SDL_Flip(screen); // Show the screen
+#endif
   SDL_Delay(1000); // Wait 1 second to be not too fast
 
   // Wait for keypress
@@ -279,6 +310,7 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
   int x, y; // used for mouse cursor position
 
   switch (e->type) {//type of SDL event
+#if 0
     case SDL_VIDEORESIZE:
       printf("OLD DIMENSIONS: %d  %d\n", g_ScreenWidth, g_ScreenHeight);
       g_ScreenWidth = e->resize.w;
@@ -287,7 +319,19 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         g_ScreenHeight = 192;
       }
       // Resize the screen
+#if 1
+      if (sdlWindow == NULL)
+        sdlWindow = SDL_CreateWindow("linapple",
+                          SDL_WINDOWPOS_UNDEFINED,  
+                          SDL_WINDOWPOS_UNDEFINED,  
+                          e->resize.w, e->resize.h,
+                          SDL_WINDOW_OPENGL); 
+	  if (sdlSurface == NULL)
+        sdlSurface = SDL_GetWindowSurface(sdlWindow);
+      screen = SDL_CreateRGBSurface(SDL_SWSURFACE, e->resize.w, e->resize.h, SCREEN_BPP, 0, 0, 0, 0);
+#else
       screen = SDL_SetVideoMode(e->resize.w, e->resize.h, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE | SDL_RESIZABLE);
+#endif
       if (screen == NULL) {
         SDL_Quit();
         return;
@@ -312,7 +356,7 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
     case SDL_ACTIVEEVENT:
       g_bAppActive = e->active.gain; // if gain==1, app is active
       break;
-
+#endif
     case SDL_KEYDOWN:
       if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & KMOD_LCTRL) {
         FrameQuickState(mysym - SDLK_0, mymod);
@@ -365,7 +409,11 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
           VideoRedrawScreen();
         }
         g_bResetTiming = true;
+#ifdef SDL2
+      } else if (mysym == SDLK_SCROLLLOCK) {
+#else
       } else if (mysym == SDLK_SCROLLOCK) {
+#endif
         g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed; // turn on/off full speed?
       } else if ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_LOGO) || (g_nAppMode == MODE_STEPPING)) {
         g_bDebuggerEatKey = false;
@@ -577,10 +625,12 @@ void ProcessButtonClick(int button, int mod)
 
   switch (button) {
     case BTN_HELP:
+	  printf("[trngaje] BTN_HELP\n");
       FrameShowHelpScreen(screen->w, screen->h);
       break;
 
     case BTN_RUN:  // F2 - Run that thing! Or Shift+2 ReloadConfig and run it anyway!
+	  printf("[trngaje] BTN_RUN\n");
       if ((mod & (KMOD_LCTRL)) == (KMOD_LCTRL) || (mod & (KMOD_RCTRL)) == (KMOD_RCTRL)) {
         if (g_nAppMode == MODE_LOGO) {
           DiskBoot();
@@ -595,6 +645,7 @@ void ProcessButtonClick(int button, int mod)
         VideoRedrawScreen();
         g_bResetTiming = true;
       } else if (mod & KMOD_SHIFT) {
+		  printf("[trngaje] ProcessButtonClick: mod & KMOD_SHIFT : restart = 1;\n");
         restart = 1;  // Keep up flag of restarting
         qe.type = SDL_QUIT;
         SDL_PushEvent(&qe); // Push quit event
@@ -603,6 +654,7 @@ void ProcessButtonClick(int button, int mod)
 
     case BTN_DRIVE1:
     case BTN_DRIVE2:
+	  printf("[trngaje] BTN_DRIVE\n");
       JoyReset();
       if (mod & KMOD_CTRL) {
         if (mod & KMOD_SHIFT) {
@@ -631,10 +683,12 @@ void ProcessButtonClick(int button, int mod)
       break;
 
     case BTN_DRIVESWAP:  // F5 - swap disk drives
+	  printf("[trngaje] BTN_DRIVESWAP\n");
       DiskDriveSwap();
       break;
 
     case BTN_FULLSCR:  // F6 - Fullscreen on/off
+	  printf("[trngaje] BTN_FULLSCR\n");
       if (mod & KMOD_SHIFT) {
          // only IIe and enhanced have a keyboard rocker switch (and only non-US keyboards)
          if ((g_KeyboardLanguage != English_US)&&
@@ -671,6 +725,7 @@ void ProcessButtonClick(int button, int mod)
       break;
 
     case BTN_SETUP:  // setup is in conf file - linapple.conf.
+	  printf("[trngaje] BTN_SETUP\n");
       // may be it should be implemented using SDL??? 0_0 --bb
       // Now Shift-F8 save settings changed run-tme in linapple.conf
       // F8 - save current screen as a .bmp file
@@ -687,6 +742,7 @@ void ProcessButtonClick(int button, int mod)
 
     // Buttons handlers for F9 - F12
     case BTN_CYCLE: // F9 - CYCLE through allowed video modes
+	  printf("[trngaje] BTN_CYCLE\n");
       if (mod & KMOD_SHIFT) {
         // GPH Added budget video for updating only every 12 60Hz frames.
         // This is because, on computers without a fast GPU, the drawing of the screen
@@ -715,10 +771,12 @@ void ProcessButtonClick(int button, int mod)
       }
       break;
     case BTN_QUIT:  // F10 - exit from emulator?
+	  printf("[trngaje] BTN_QUIT\n");
       qe.type = SDL_QUIT;
       SDL_PushEvent(&qe); // Push quit event
       break;  //
     case BTN_SAVEST: // Save state (F11)
+	  printf("[trngaje] BTN_SAVEST\n");
       if (mod & KMOD_ALT) { // quick save
         Snapshot_SaveState();
       } else if (PSP_SaveStateSelectImage(true)) {
@@ -726,6 +784,7 @@ void ProcessButtonClick(int button, int mod)
       }
       break;
     case BTN_LOADST: // Load state (F12) or Hot Reset (Ctrl+F12)
+	  printf("[trngaje] BTN_LOADST\n");
       if (mod & KMOD_CTRL) {
         if (!IS_APPLE2) {
           MemResetPaging();
@@ -770,7 +829,9 @@ static bool bIamFullScreened;  // for correct fullscreen switching
 void SetFullScreenMode() {
   if (!bIamFullScreened) {
     bIamFullScreened = true;
+#ifndef SDL2
     SDL_WM_ToggleFullScreen(screen);
+#endif
     if (g_nAppMode != MODE_DEBUG)
       SDL_ShowCursor(SDL_DISABLE);
   }
@@ -780,7 +841,9 @@ void SetNormalMode()
 {
   if (bIamFullScreened) {
     bIamFullScreened = 0;
+#ifndef SDL2
     SDL_WM_ToggleFullScreen(screen);// we should go back anyway!? ^_^  --bb
+#endif
     if (!usingcursor) {
       SDL_ShowCursor(SDL_ENABLE);
     } // show mouse cursor if not use it
@@ -788,32 +851,63 @@ void SetNormalMode()
   else
   if (g_nAppMode == MODE_DEBUG)
   {
+#ifdef SDL2
+    SDL_SetRelativeMouseMode(SDL_FALSE);
+#else
     SDL_ShowCursor(SDL_ENABLE);
     SDL_WM_GrabInput(SDL_GRAB_OFF);
+#endif
   }
 }
 
 void SetUsingCursor(bool newvalue) {
   usingcursor = newvalue;
   if (usingcursor) { // Hide mouse cursor and grab input (mouse and keyboard)
+#ifdef SDL2
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+#else
     SDL_ShowCursor(SDL_DISABLE);
     SDL_WM_GrabInput(SDL_GRAB_ON);
+#endif
   } else { // On the contrary - show mouse cursor and ungrab input
+
+#ifdef SDL2
+    SDL_SetRelativeMouseMode(SDL_FALSE);
+#else
     if ((!bIamFullScreened)||(g_nAppMode == MODE_DEBUG)) {
       SDL_ShowCursor(SDL_ENABLE);
     }  // Show cursor if not in fullscreen mode
     SDL_WM_GrabInput(SDL_GRAB_OFF);
+#endif
   }
 }
 
 int FrameCreateWindow()
 {
   // Init SDL and create window screen
+
+#ifdef SDL2
+  SDL_setenv("SDL_VIDEO_CENTERED", "center", 1); // Center our window
+#else
   static char sdlCmd[] = "SDL_VIDEO_CENTERED=center";
   SDL_putenv(sdlCmd); // Center our window
+#endif
 
   bIamFullScreened = false; // At startup not in fullscreen mode
+  
+#ifdef SDL2
+  sdlWindow = SDL_CreateWindow("linapple",
+                          SDL_WINDOWPOS_UNDEFINED,  
+                          SDL_WINDOWPOS_UNDEFINED,  
+                          g_ScreenWidth, g_ScreenHeight,
+                          SDL_WINDOW_OPENGL); 
+  sdlSurface = SDL_GetWindowSurface(sdlWindow);
+  //screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, 0, 0, 0, 0);
+  screen = SDL_CreateRGBSurfaceWithFormat(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_PIXELFORMAT_INDEX8);
+  
+#else 
   screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE);
+#endif
   if (screen == NULL) {
     fprintf(stderr, "Could not set SDL video mode: %s\n", SDL_GetError());
     SDL_Quit();
@@ -831,7 +925,9 @@ int FrameCreateWindow()
     newRect.w = g_ScreenWidth;
     newRect.h = g_ScreenHeight;
   }
+#ifndef SDL2
   SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+#endif
   return 0;
 }
 
@@ -840,10 +936,14 @@ void SetIcon()
   /* Black is the transparency colour.
      Part of the logo seems to use it !? */
   Uint32 colorkey = SDL_MapRGB(assets->icon->format, 0, 0, 0);
+#ifdef SDL2
+  SDL_SetColorKey(assets->icon, SDL_TRUE, colorkey);
+#else
   SDL_SetColorKey(assets->icon, SDL_SRCCOLORKEY, colorkey);
 
   /* No need to pass a mask given the above. */
   SDL_WM_SetIcon(assets->icon, NULL);
+#endif
 }
 
 int InitSDL()

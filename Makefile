@@ -43,10 +43,10 @@ TARGETDIR   := build/$(BINDIR)
 
 #Flags, Libraries and Includes
 
-SDL_CONFIG ?= sdl-config
+SDL_CONFIG ?= sdl2-config
 SDL_CFLAGS = $(shell $(SDL_CONFIG) --cflags)
 SDL_LIBS = $(shell $(SDL_CONFIG) --libs)
-SDL_LIBS +=  $(shell pkg-config SDL_image --libs)
+SDL_LIBS +=  $(shell pkg-config SDL2_image --libs)
 
 CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
@@ -69,12 +69,14 @@ CFLAGS += "-DREGISTRY_WRITEABLE=1"
 endif
 
 CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DVERSIONSTRING=\"$(VERSION)\"
+CFLAGS += -DSDL2
 CFLAGS += $(SDL_CFLAGS)
 CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
 CFLAGS += -Wno-write-strings
 
-LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread -lX11
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread 
+#-lX11
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 

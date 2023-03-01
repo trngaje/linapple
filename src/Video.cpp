@@ -155,6 +155,12 @@ typedef bool (*UpdateFunc_t)(int, int, int, int, int);
 static unsigned char celldirty[40][32];
 static unsigned int customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
 
+#ifdef SDL2
+extern SDL_Window* sdlWindow;
+extern SDL_Surface* sdlSurface;
+#endif
+
+
 SDL_Surface *g_hDeviceBitmap;
 static LPBYTE framebufferbits;
 SDL_Color framebufferinfo[256];
@@ -371,14 +377,23 @@ void CreateDIBSections() {
     fprintf(stderr, "g_hDeviceBitmap was not created!\n");
   }
   framebufferbits = (LPBYTE) g_hDeviceBitmap->pixels;
+#ifdef SDL2
+  SDL_SetPaletteColors(g_hDeviceBitmap->format->palette, g_pSourceHeader, 0, 256);
+  SDL_SetPaletteColors(g_origscreen->format->palette, g_pSourceHeader, 0, 256);
+  SDL_SetPaletteColors(screen->format->palette, g_pSourceHeader, 0, 256);
+#else
   SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
   SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
-
+#endif
   if (g_hStatusSurface) {
     SDL_FreeSurface(g_hStatusSurface);
   }
   g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
+#ifdef SDL2
+  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
+#else
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
+#endif
 
   /* Create status panel background */
   SDL_Rect srect;
@@ -408,8 +423,11 @@ void CreateDIBSections() {
   }
 
   g_pSourcePixels = (LPBYTE) g_hSourceBitmap->pixels;
+#ifdef SDL2
+  SDL_SetPaletteColors(g_hSourceBitmap->format->palette, framebufferinfo, 0, 256);
+#else
   SDL_SetColors(g_hSourceBitmap, framebufferinfo, 0, 256);
-
+#endif
   // CREATE THE OFFSET TABLE FOR EACH SCAN LINE IN THE SOURCE IMAGE
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
     g_aSourceStartofLine[y] = g_pSourcePixels + SRCOFFS_TOTAL * y;
@@ -1294,8 +1312,14 @@ SDL_Surface* LoadCharset() {
   if (tmp)
   {
     // convert format
+#ifdef SDL2
+	//SDL_Surface *result = SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdlWindow), 0);
+	 SDL_Surface *result = tmp;
+#else
     SDL_Surface *result = SDL_DisplayFormat(tmp);
     SDL_FreeSurface(tmp);
+#endif
+
 
     /* correct character set bitmaps should be 128x128 (single language) or
      * 256x128 for the Euro-ROMs with alternative language */
@@ -1618,7 +1642,10 @@ void VideoDestroy() {
     SDL_FreeSurface(g_hLogoBitmap);
   }
   g_hLogoBitmap = NULL;
-
+#ifdef SDL2
+  assets->splash = NULL; // add by trngaje
+#endif
+  
   if (charset40) {
     SDL_FreeSurface(charset40);
   }
@@ -1632,7 +1659,11 @@ void VideoDisplayLogo() {
     return; // nothing to display?
   }
   if (screen->format->palette && g_hLogoBitmap->format->palette) {
+#ifdef SDL2
+    SDL_SetPaletteColors(screen->format->palette, g_hLogoBitmap->format->palette->colors, 0, g_hLogoBitmap->format->palette->ncolors);
+#else
     SDL_SetColors(screen, g_hLogoBitmap->format->palette->colors, 0, g_hLogoBitmap->format->palette->ncolors);
+#endif
   }
 
   drect.x = drect.y = srect.x = srect.y = 0;
@@ -1643,7 +1674,14 @@ void VideoDisplayLogo() {
 
   SDL_SoftStretch(g_hLogoBitmap, &srect, screen, &drect);
   SDL_SoftStretch(g_hLogoBitmap, &srect, g_origscreen, &drect);
+#ifdef SDL2
+  
+  SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+  //SDL_FillRect(sdlSurface, 0, SDL_MapRGB(sdlSurface->format, 0, 255, 0));
+  SDL_UpdateWindowSurface(sdlWindow);
+#else
   SDL_Flip(screen);
+#endif
 }
 
 bool VideoHasRefreshed() {
@@ -1658,7 +1696,11 @@ void VideoInitialize() {
   ZeroMemory(vidlastmem, 0x10000);
 
   // LOAD THE splash screen
+#ifdef SDL2
+  g_hLogoBitmap = assets->splash; //SDL_ConvertSurfaceFormat(assets->splash, SDL_GetWindowPixelFormat(sdlWindow), 0);
+#else
   g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
+#endif
 
   // LOAD APPLE CHARSET40
   if (!charset40)
@@ -1746,7 +1788,6 @@ void VideoRedrawScreen() {
 }
 
 void VideoPerformRefresh() {
-
   // Claim until video refresh is complete
   pthread_mutex_lock(&video_draw_mutex);
 
@@ -1884,14 +1925,34 @@ void VideoPerformRefresh() {
     if (bStatusShow && g_ShowLeds) {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
+#ifdef SDL2
+	//printf("[trngaje] 0x%x, 0x%x\n", sdlSurface, sdlWindow);
+    SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+	//SDL_FillRect(sdlSurface, 0, SDL_MapRGB(sdlSurface->format, 255, 0, 0));
+    SDL_UpdateWindowSurface(sdlWindow);
+#else
     SDL_Flip(screen);  // flip SDL buffers
+#endif
   } else if (bStatusShow) {
     if (g_ShowLeds) {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
+
+#ifdef SDL2
+    SDL_Rect rects;
+	rects.x = srect.x;
+	rects.y = srect.y;
+	rects.w = STATUS_PANEL_W;
+	rects.h = STATUS_PANEL_H;
+	
+    SDL_UpdateWindowSurfaceRects(sdlWindow, &rects, 1);
+#else
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
+#endif
   }
+
   SetLastDrawnImage();
+
   redrawfull = 0;
   hasrefreshed = 1;
 
@@ -1911,12 +1972,22 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
     g_uDebugVideoMode = uRedrawWholeScreenVideoMode;
     redrawfull = 1;
   }
+
+#ifdef SDL2
+//  if (video_worker_active_) {
+    video_worker_refresh_ = true;
+//  } else {
+    // If singlethreaded just call the refresh here.
+    VideoPerformRefresh();
+ // }
+#else
   if (video_worker_active_) {
     video_worker_refresh_ = true;
   } else {
     // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
   }
+#endif
 }
 
 void VideoResetState() {

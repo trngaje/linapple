@@ -84,6 +84,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	WindowSplit_t *g_pDisplayWindow = 0; // HACK
 // HACK
 
+#ifdef SDL2
+extern SDL_Window* sdlWindow;
+extern SDL_Surface* sdlSurface;
+#endif
+
 	// Display
 	SDL_Surface *g_hDebugScreen;
 	SDL_Surface *g_hDebugCharset;
@@ -240,8 +245,13 @@ void AllocateDebuggerMemDC(void)
     // character bitmap for IIe and enhanced
     SDL_Surface *tmp = IMG_ReadXPMFromArray(charset40_xpm);
     // convert format
+#ifdef SDL2
+    g_hDebugCharset = tmp;//SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdlWindow), 0);
+#else
     g_hDebugCharset = SDL_DisplayFormat(tmp);
     SDL_FreeSurface(tmp);
+#endif
+
 
 //    ZeroMemory(debugColors, sizeof(debugColors));
 //    for (int i=1;i<256;i++)
@@ -286,7 +296,12 @@ void StretchBltMemToFrameDC(void)
 	SDL_SoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
 	SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
 
+#ifdef SDL2
+	SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+	SDL_UpdateWindowSurface(sdlWindow);
+#else
 	SDL_Flip(screen);
+#endif
 
 	pthread_mutex_unlock(&video_draw_mutex);
 }

@@ -43,6 +43,11 @@
 
 #define MAX_FILENAME  80
 
+#ifdef SDL2
+extern SDL_Window* sdlWindow;
+extern SDL_Surface* sdlSurface;
+#endif
+
 #ifndef _WIN32
 
 int getstat(const char *catalog, const char *fname, uintmax_t *size)
@@ -225,12 +230,20 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     if (tempSurface == NULL) {
       tempSurface = screen;  // use screen, if none available
     }
-
+#ifdef SDL2
+	SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 255, 0, 255)); // add by trngaje
+#endif
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);
     if (tempSurface->format->palette && my_screen->format->palette) {
+#ifdef SDL2
+      SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+#else
       SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+#endif
     }
+
+
 
     surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
     SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
@@ -240,7 +253,12 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
 
     font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
+#ifdef SDL2
+    SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+    SDL_UpdateWindowSurface(sdlWindow);
+#else
     SDL_Flip(screen);  // show the screen
+#endif
   }
 
   auto file_list = file_list_generator->generate_file_list();
@@ -248,8 +266,12 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     printf("%s\n", file_list_generator->get_failure_message().c_str());
 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
+#ifdef SDL2
+    SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+    SDL_UpdateWindowSurface(sdlWindow);
+#else
     SDL_Flip(screen);  // show the screen
-
+#endif
     pthread_mutex_unlock(&video_draw_mutex);
     SDL_Delay(KEY_DELAY);  // wait some time to be not too fast
     // Wait for keypress
@@ -333,8 +355,12 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       rectangle(screen, 0, TOPX - 5, sx, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
       rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
 
+#ifdef SDL2
+      SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
+      SDL_UpdateWindowSurface(sdlWindow);
+#else
       SDL_Flip(screen);  // show the screen
-
+#endif
 
       // Relinquish video ownership
       pthread_mutex_unlock(&video_draw_mutex);
@@ -359,23 +385,39 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       }
 
       // control cursor
+#ifdef SDL2
+      keyboard = (Uint8*)SDL_GetKeyboardState(NULL);  // get current state of pressed (and not pressed) keys
+#else
       keyboard = SDL_GetKeyState(NULL);  // get current state of pressed (and not pressed) keys
+#endif
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_UP] || keyboard[SDL_SCANCODE_LEFT]) {
+#else
       if (keyboard[SDLK_UP] || keyboard[SDLK_LEFT]) {
+#endif
         if (act_file > 0)
           act_file--;  // up one position
         if (act_file < first_file)
           first_file = act_file;
       }
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_DOWN] || keyboard[SDL_SCANCODE_RIGHT]) {
+#else
       if (keyboard[SDLK_DOWN] || keyboard[SDLK_RIGHT]) {
+#endif
         if (act_file < (file_list.size() - 1))
           act_file++;
         if (act_file >= (first_file + FILES_IN_SCREEN))
           first_file = act_file - FILES_IN_SCREEN + 1;
       }
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_PAGEUP]) {
+#else
       if (keyboard[SDLK_PAGEUP]) {
+#endif
         if (act_file <= FILES_IN_SCREEN) {
           act_file = 0;
         } else {
@@ -385,7 +427,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
           first_file = act_file;
       }
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_PAGEDOWN]) {
+#else
       if (keyboard[SDLK_PAGEDOWN]) {
+#endif
         act_file += FILES_IN_SCREEN;
         if (act_file >= file_list.size())
           act_file = (file_list.size() - 1);
@@ -394,7 +440,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       }
 
       // choose an item?
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_RETURN]) {
+#else
       if (keyboard[SDLK_RETURN]) {
+#endif
         // dup string from selected file name
         const file_entry_t& file_entry = file_list[act_file];
         filename = file_entry.name;
@@ -408,17 +458,29 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
         return true;
       }
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_ESCAPE]) {
+#else
       if (keyboard[SDLK_ESCAPE]) {
+#endif
         SDL_FreeSurface(my_screen);
         return false;    // ESC has been pressed
       }
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_HOME]) {
+#else
       if (keyboard[SDLK_HOME]) {
+#endif
         act_file = 0;
         first_file = 0;
       }
 
+#ifdef SDL2
+      if (keyboard[SDL_SCANCODE_END]) {	
+#else
       if (keyboard[SDLK_END]) {
+#endif
         act_file = file_list.size() - 1;  // go to the last possible file in list
         if (act_file <= FILES_IN_SCREEN - 1) {
           first_file = 0;
@@ -434,11 +496,23 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
         bool char_hit = false;
         char ch;
         int char_range_idx = 0;
+        
+#ifdef SDL2
+        unsigned int ch_key;       
+		static unsigned int char_range[4][2] = {{SDL_SCANCODE_A, SDL_SCANCODE_Z},{SDL_SCANCODE_0,SDL_SCANCODE_9},{0,0}};
+#else
         static char char_range[4][2] = {{'A','Z'},{'a','z'},{'0','9'},{0,0}};
+#endif
         while (!char_hit && char_range[char_range_idx][0]) {
           if (!char_hit) {
+#ifdef SDL2
+            for (ch_key = char_range[char_range_idx][0]; ch_key <= char_range[char_range_idx][1]; ch_key++) {
+              if (keyboard[ch_key]) {
+#else
             for (ch = char_range[char_range_idx][0]; ch <= char_range[char_range_idx][1]; ch++) {
               if (keyboard[(unsigned int) ch]) {
+
+#endif
                 char_hit = true;
                 break;
               }
@@ -450,10 +524,17 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
         // If user hit a key in one of the ranges, jump to files beginning
         // with that character...
         if (char_hit) {
+#ifdef SDL2
+		  if (ch_key >= SDL_SCANCODE_A && ch_key <= SDL_SCANCODE_Z)
+			  ch = 'a' + ch_key - SDL_SCANCODE_A;
+		  else if (ch_key >= SDL_SCANCODE_0 && ch_key <= SDL_SCANCODE_9)
+			   ch = '0' + ch_key - SDL_SCANCODE_0;
+#else
           // Make pressed char lowercase
           if (ch >= 'A' && ch <= 'Z') {
             ch |= 0x20;
           }
+#endif
           // Slow, linear search from top of list...
           for (size_t fidx = 0; fidx < file_list.size(); fidx++ ) {
             char file_char = tolower(file_list[fidx].name[0]);
@@ -470,6 +551,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
             }
           }
         }
+
       }
     }
   }

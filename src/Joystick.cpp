@@ -175,6 +175,38 @@ void CheckJoystick0() {
       joybutton[1] = SDL_JoystickGetButton(joy1, joy1button2);
     }
 
+#ifdef SDL2
+	// add by trngaje for hat
+	switch(SDL_JoystickGetHat(joy1, 0))
+	{
+	case 1:
+		keydown[JK_UP] = true;
+		keydown[JK_DOWN] = false;
+		break;
+    case 2:
+		keydown[JK_RIGHT] = true;
+		keydown[JK_LEFT] = false;	
+		break;
+    case 4:
+		keydown[JK_UP] = false;
+		keydown[JK_DOWN] = true;
+		break;
+    case 8:
+		keydown[JK_RIGHT] = false;
+		keydown[JK_LEFT] = true;	
+		break;
+    default:
+		keydown[JK_UP] = false;
+		keydown[JK_DOWN] = false;
+		keydown[JK_RIGHT] = false;
+		keydown[JK_LEFT] = false;			
+	
+	}
+#endif	
+	//printf("[trngaje] hat0 = %d\n", SDL_JoystickGetHat(joy1, 0)); // 1 (up),2 (right),4 (down),8 (left)
+
+	
+
     xpos[0] = (SDL_JoystickGetAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
     ypos[0] = (SDL_JoystickGetAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
 
@@ -364,31 +396,51 @@ void JoyInitialize()
 void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
   switch (virtkey) {
     case SDLK_DOWN:
+#ifdef SDL2
+    case SDLK_KP_2:
+#else
     case SDLK_KP2:
+#endif
       if (g_nPdlTrimY < 64) {
         g_nPdlTrimY++;
       }
       break;
+#ifdef SDL2
+    case SDLK_KP_4:
+#else
     case SDLK_KP4:
+#endif
     case SDLK_LEFT:
       if (g_nPdlTrimX > -64) {
         g_nPdlTrimX--;
       }
       break;
 
+#ifdef SDL2
+    case SDLK_KP_6:
+#else
     case SDLK_KP6:
+#endif
     case SDLK_RIGHT:
       if (g_nPdlTrimX < 64) {
         g_nPdlTrimX++;
       }
       break;
+#ifdef SDL2
+    case SDLK_KP_8:
+#else
     case SDLK_KP8:
+#endif
     case SDLK_UP:
       if (g_nPdlTrimY > -64) {
         g_nPdlTrimY--;
       }
       break;
+#ifdef SDL2
+    case SDLK_KP_5:
+#else
     case SDLK_KP5:
+#endif
     case SDLK_CLEAR:
       g_nPdlTrimX = g_nPdlTrimY = 0;
       break;
@@ -421,47 +473,92 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
   else
 #endif
   if (!extended) {
+#ifdef SDL2
+    if ((virtkey >= SDLK_KP_1) && (virtkey <= SDLK_KP_9)) {
+      keydown[virtkey - SDLK_KP_1] = down;
+#else
     if ((virtkey >= SDLK_KP1) && (virtkey <= SDLK_KP9)) {
       keydown[virtkey - SDLK_KP1] = down;
+#endif
     } else {
       switch (virtkey) {
+#ifdef SDL2
+        case SDLK_KP_1:
+#else
         case SDLK_KP1:
+#endif
         case SDLK_END:
           keydown[0] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_2:
+#else
         case SDLK_KP2:
+#endif
         case SDLK_DOWN:
           keydown[1] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_3:
+#else
         case SDLK_KP3:
+#endif
         case SDLK_PAGEDOWN:
           keydown[2] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_4:
+#else
         case SDLK_KP4:
+#endif
         case SDLK_LEFT:
           keydown[3] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_5:
+#else
         case SDLK_KP5:
+#endif
         case SDLK_CLEAR:
           keydown[4] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_6:
+#else
         case SDLK_KP6:
+#endif
         case SDLK_RIGHT:
           keydown[5] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_7:
+#else
         case SDLK_KP7:
+#endif
         case SDLK_HOME:
           keydown[6] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_8:
+#else
         case SDLK_KP8:
+#endif
         case SDLK_UP:
           keydown[7] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_9:
+#else
         case SDLK_KP9:
+#endif
         case SDLK_PAGEUP:
           keydown[8] = down;
           break;
+#ifdef SDL2
+        case SDLK_KP_0:
+#else
         case SDLK_KP0:
+#endif
         case SDLK_INSERT:
           keydown[9] = down;
           break;  // Button #0
@@ -478,7 +575,11 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
 
   if (keychange) {
     // Is it a joystick button 0 or 1 (open-apple or solid apple)?
+#ifdef SDL2
+    if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
+#else
     if ((virtkey == SDLK_KP0) || (virtkey == SDLK_INSERT)) {
+#endif
       // It's a joystick button...
       if (down) {
         if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {

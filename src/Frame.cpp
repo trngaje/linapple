@@ -123,7 +123,7 @@ void DrawStatusArea(int drawflags)
   SDL_Rect srect;
   Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);  // bluez color, know that?
 #ifdef SDL2
-  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
+  //SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
 #else
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 #endif
@@ -210,9 +210,6 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     tempSurface = g_origscreen;
   }
 
-#ifdef SDL2
-  SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 0, 0, 255)); // add by trngaje
-#endif
 
   if (tempSurface == NULL) {
     tempSurface = screen;
@@ -254,7 +251,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   rectangle(screen, 1, 1, g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
 #ifdef SDL2
-  tempSurface = assets->icon; //SDL_ConvertSurfaceFormat(assets->icon, SDL_GetWindowPixelFormat(sdlWindow), 0);
+  tempSurface = SDL_ConvertSurfaceFormat(assets->icon, SDL_GetWindowPixelFormat(sdlWindow), 0);
 #else
   tempSurface = SDL_DisplayFormat(assets->icon);
 #endif
@@ -266,14 +263,18 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   scrr.x = int(460 * facx);
   scrr.y = int(270 * facy);
   scrr.w = scrr.h = int(100 * facy);
-  SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
+
 
 #ifdef SDL2
-  //SDL_FillRect(screen, 0, SDL_MapRGB(sdlSurface->format, 0, 0, 255));
+  SDL_BlitScaled(tempSurface, &logo, screen, &scrr);
+  SDL_FreeSurface(tempSurface);
+  SDL_FreeSurface(my_screen);
+
   SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
 
   SDL_UpdateWindowSurface(sdlWindow);
 #else
+  SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
   SDL_Flip(screen); // Show the screen
 #endif
   SDL_Delay(1000); // Wait 1 second to be not too fast
@@ -902,9 +903,7 @@ int FrameCreateWindow()
                           g_ScreenWidth, g_ScreenHeight,
                           SDL_WINDOW_OPENGL); 
   sdlSurface = SDL_GetWindowSurface(sdlWindow);
-  //screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, 0, 0, 0, 0);
-  screen = SDL_CreateRGBSurfaceWithFormat(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_PIXELFORMAT_INDEX8);
-  
+  screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, 0, 0, 0, 0); 
 #else 
   screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE);
 #endif

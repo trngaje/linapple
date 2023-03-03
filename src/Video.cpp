@@ -390,7 +390,7 @@ void CreateDIBSections() {
   }
   g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
 #ifdef SDL2
-  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
+//  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
 #else
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 #endif
@@ -1926,7 +1926,6 @@ void VideoPerformRefresh() {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
 #ifdef SDL2
-	//printf("[trngaje] 0x%x, 0x%x\n", sdlSurface, sdlWindow);
     SDL_BlitScaled(screen, NULL, sdlSurface, NULL);
 	//SDL_FillRect(sdlSurface, 0, SDL_MapRGB(sdlSurface->format, 255, 0, 0));
     SDL_UpdateWindowSurface(sdlWindow);

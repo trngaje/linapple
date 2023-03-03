@@ -231,7 +231,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       tempSurface = screen;  // use screen, if none available
     }
 #ifdef SDL2
-	SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 255, 0, 255)); // add by trngaje
+//	SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 255, 0, 255)); // add by trngaje
 #endif
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);

@@ -427,8 +427,7 @@ SDL_Surface *font_sfc = NULL;  // used for font
 bool fonts_initialization(void) {
 
 #ifdef SDL2
-  //font_sfc = SDL_ConvertSurfaceFormat(assets->font, screen->format->format/*SDL_GetWindowPixelFormat(sdlWindow)*/, 0);
-  font_sfc = assets->font;
+  font_sfc = SDL_ConvertSurfaceFormat(assets->font, SDL_GetWindowPixelFormat(sdlWindow), 0);
 #else
   font_sfc = SDL_DisplayFormat(assets->font);	
 #endif
@@ -474,7 +473,11 @@ void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx,
     d.y = y;
     d.w = s.w * kx;
     d.h = s.h * ky;
+#ifdef SDL2
+    SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
   }
 }
 
@@ -503,7 +506,11 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
     d.y = y;
     d.w = s.w * kx;
     d.h = s.h * ky;
+#ifdef SDL2
+	SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
   }
 }
 
@@ -535,7 +542,11 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
     d.y = y;
     d.w = s.w * kx;
     d.h = s.h * ky;
+#ifdef SDL2
+	SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
   }
 }
 

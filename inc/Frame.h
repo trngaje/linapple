@@ -12,7 +12,7 @@ enum {
 // if you gonna change these values, consider changing some values in Video.cpp --bb
 #define SCREEN_WIDTH  560
 #define SCREEN_HEIGHT  384
-#define SCREEN_BPP  8
+#define SCREEN_BPP  32
 extern SDL_Surface *screen;
 
 #define SHOW_CYCLES  15
